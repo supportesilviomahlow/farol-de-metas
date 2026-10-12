@@ -23,14 +23,17 @@ Ranking das lideranças da Supporte pelo Farol de Metas, no formato do slide 33 
 
 Os dados saem das planilhas em `\\192.168.102.161\rmr\2026`.
 
-**Pelo site.** O botão **Atualizar**, no menu lateral, faz o servidor reler todos os faróis.
+**Pelo site.** O botão **Atualizar**, no menu lateral, deixa um pedido no servidor. Quem lê os Excel é o **computador do Silvio**, com o acesso dele à pasta.
 
-- Leva uns 10 minutos, e o botão mostra o progresso ("Lendo faróis 12/44").
-- No 173, a leitura da pasta é feita por SMB, com o Python de `~/farol-metas/venv` (openpyxl + smbprotocol).
-- A conta de leitura fica em `~/farol-metas/.env`, que é colocado à mão, com `chmod 600`. O modelo está em `.env.example`.
-- Se a rede cair no meio, o ranking anterior é mantido.
+- No computador do Silvio, a tarefa "Farol de Metas - Atualizar" do Agendador do Windows roda `etl/agente_atualizacao.py` a cada minuto, sem janela.
+- O agente vê o pedido, roda o extrator e manda o andamento e o `farol.json` novo para o 173 por ssh, com a chave que já existe. Não há senha em lugar nenhum.
+- O botão mostra o andamento ("Lendo faróis 12/44").
+- Se o computador estiver desligado ou fora da rede, o site avisa, e a atualização roda quando ele voltar.
+- Só são relidos os Excel que mudaram, graças ao cache em `data/.cache`. Sem mudança, termina em segundos.
+- Para instalar ou remover a tarefa: `powershell -ExecutionPolicy Bypass -File deploygente-instalar.ps1` (com `-Remover` para tirar).
+- Log do agente: `data/agente.log`.
 
-**Por esta máquina** (alternativa):
+**Por linha de comando** (alternativa):
 
 ```bash
 python etl/extrair.py                              # grava data/farol.json
@@ -44,7 +47,7 @@ Nos dois casos, o extrator avisa no fim quais faróis têm problema, por exemplo
 Porte pequeno: só leitura, sem banco e sem login.
 
 - **Front:** React 19, Vite 7, Tailwind 4, React Router 7 e `lucide-react`. O menu lateral e os tokens visuais vieram da Central de Fretes.
-- **Servidor:** Nitro 2. Serve o build do React e o `GET /api/farol`, que lê o `data/farol.json`. Quando o arquivo muda, o servidor relê sozinho. O botão Atualizar dispara o extrator Python como processo filho.
+- **Servidor:** Nitro 2. Serve o build do React e o `GET /api/farol`, que lê o `data/farol.json`. Quando o arquivo muda, o servidor relê sozinho. No 173, o botão Atualizar só registra o pedido (`FAROL_MODO_ATUALIZAR=agente`). Em desenvolvimento, roda o extrator direto.
 - **ETL:** Python. `etl/farol_base.py` é o parser que já existia em `01 - Transportes/Dash DR`. `etl/extrair.py` aplica as regras acima.
 
 ### Fluxos e endpoints
@@ -52,7 +55,7 @@ Porte pequeno: só leitura, sem banco e sem login.
 | Método | Rota | O que faz |
 |---|---|---|
 | GET | `/api/farol` | Devolve o ranking pronto: pessoas, % do YTD e de cada mês, desempates e metas. |
-| POST | `/api/atualizar` | Dispara a releitura dos faróis, uma rodada por vez. |
+| POST | `/api/atualizar` | Pede a releitura dos faróis. No 173, deixa o pedido para o agente; uma rodada por vez. |
 | GET | `/api/atualizar` | Andamento da releitura (lidos/total, ok ou erro). |
 | GET | `/saude` | Usado pelo deploy para confirmar que o app subiu. |
 | GET | `/mes`, `/ytd`, `/simulador` | Telas do React. O servidor devolve o `index.html`. |
@@ -75,7 +78,7 @@ bash deploy/publicar-no-servidor.sh
 O script segue o mesmo padrão do PGP:
 
 - Faz o build local e envia o `web/.output`, o `etl/` e o `run.sh` via `tar | ssh` para `~/farol-metas` no 173.
-- O `data/farol.json` só é enviado na primeira vez. Depois disso, quem manda é o servidor, atualizado pelo botão. O `.env` e o `venv/` nunca são enviados.
+- O `data/farol.json` só é enviado na primeira vez. Depois disso, quem atualiza é o botão.
 - Faz backup antes de trocar qualquer coisa.
 - Mantém um watchdog no cron a cada 2 minutos.
 - Confere pela rede que o processo novo subiu.

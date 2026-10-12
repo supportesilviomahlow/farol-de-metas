@@ -9,19 +9,9 @@ BASE="$HOME/farol-metas"
 export PORT=3007
 export FAROL_DADOS="$BASE/data/farol.json"
 export FAROL_ETL="$BASE/etl/extrair.py"
+# Atualizar pelo computador do Silvio (etl/agente_atualizacao.py): o botao so deixa um pedido.
+export FAROL_MODO_ATUALIZAR=agente
 
-# Botao "Atualizar": o extrator roda com o Python do venv do app (openpyxl + smbprotocol),
-# criado a mao uma vez em 12/10/2026. O python3 do sistema nao tem pip (PEP 668).
-if [ -x "$BASE/venv/bin/python3" ]; then
-  export FAROL_PYTHON="$BASE/venv/bin/python3"
-fi
-
-# Credencial de leitura da pasta do RMR (FAROL_SMB_USUARIO / FAROL_SMB_SENHA). Colocada a mao no
-# servidor, chmod 600. NUNCA vai no deploy nem no git. Sem ela o site funciona, mas o Atualizar
-# avisa que falta configurar.
-if [ -f "$BASE/.env" ]; then
-  set -a; . "$BASE/.env"; set +a
-fi
 
 if ss -tlnH 2>/dev/null | grep -q ":$PORT "; then
   echo "[$(date '+%F %T')] porta $PORT ja em uso, nao subo duplicado"

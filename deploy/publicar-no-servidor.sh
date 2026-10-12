@@ -9,15 +9,15 @@
 #
 # O QUE VAI:
 #   web/.output/   o servidor Nitro ja com o front (npm run build); nao precisa de npm no 173
-#   etl/           o extrator - o botao Atualizar roda ele NO servidor (le a pasta do RMR por SMB)
+#   etl/           o extrator (referencia; quem roda e o agente no computador do Silvio)
 #   deploy/run.sh  o script de subida
 #   data/farol.json  SO na primeira publicacao (ou com --so-dados). Depois disso o servidor e a
 #                    fonte de verdade: o botao Atualizar regrava o arquivo la, e publicar codigo
 #                    nao pode voltar o ranking para a versao desta maquina.
 #
 # O QUE NAO VAI, NUNCA:
-#   .env   a credencial de leitura da pasta do RMR. Colocada a mao no servidor, chmod 600.
-#   venv/  o Python do Atualizar (openpyxl + smbprotocol), criado a mao no servidor em 12/10/2026.
+#   nada de credencial: o botao Atualizar so deixa um pedido no servidor, e quem le os Excel e o
+#   agente no computador do Silvio (etl/agente_atualizacao.py), com o acesso dele.
 #
 # set -e FORA de proposito: ssh que mata processo remoto ou sobe daemon detached retorna 255
 # mesmo tendo funcionado. A verificacao que vale e o HTTP no final.
@@ -70,7 +70,6 @@ else
   echo "    data/farol.json: primeira vez - enviando o desta maquina"
   cp_dados
 fi
-ssh "$HOST" "[ -f ~/$BASE/.env ] && echo '    .env presente - o Atualizar le a pasta do RMR' || echo '    ATENCAO: sem ~/$BASE/.env - o site funciona, mas o Atualizar vai pedir a credencial'"
 
 echo "==> [5/7] Watchdog no cron"
 ssh "$HOST" "

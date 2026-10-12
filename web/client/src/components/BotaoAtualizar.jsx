@@ -58,6 +58,9 @@ export default function BotaoAtualizar({ aoConcluir }) {
           <div className="h-full bg-sidebar-primary transition-all" style={{ width: `${(100 * st.lidos) / st.total}%` }} />
         </div>
       )}
+      {rodando && !st.total && st.mensagem && (
+        <div className="px-1 text-[11px] text-sidebar-foreground/70">{st.mensagem}</div>
+      )}
       {aviso && (
         <div className={cn('flex items-start gap-1.5 px-1 text-[11px]', aviso.ok ? 'text-sidebar-foreground/70' : 'text-[#f8a878]')}>
           {aviso.ok ? <CircleCheck className="mt-px h-3 w-3 shrink-0" aria-hidden /> : <CircleAlert className="mt-px h-3 w-3 shrink-0" aria-hidden />}
