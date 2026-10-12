@@ -25,11 +25,13 @@ Saida no console (o servidor usa para mostrar o progresso no botao):
 Regras (combinadas com o Silvio em 10/10/2026):
   - % da pessoa = linha "Atingimento" do farol (YTD na coluna do Peso; mes na coluna Meta do mes).
   - Desempate = superacao da meta de MAIOR PESO (real/meta; meta/real quando menor e melhor),
-    com teto de 150%. Empate de peso -> media das metas empatadas. Meta qualitativa no topo
+    SEM teto (o Silvio preferiu assim em 12/10/2026: com teto de 150%, Tiago e Livania
+    empatavam em agosto e a ordem do slide 27 se invertia). Empate de peso -> media das metas
+    empatadas. Meta qualitativa no topo
     -> desce para a de maior peso que tenha meta e real. Persistindo o empate, decide a
     superacao media ponderada de todas as metas ("desempate2").
-    O criterio antigo do slide (real/meta sem teto e sem direcao) dava 1055% para o Erick
-    (Eficiencia Tributaria 12,7 mi contra 1,2 mi) e punia quem ia bem em meta de custo.
+    Em relacao ao slide, so muda o sentido: meta de custo (menor e melhor) usa meta/real -
+    o slide usava real/meta e punia quem gastava menos.
   - Lideranca do slide sem farol na pasta continua na lista, marcada "sem farol de metas", e
     vai para o fim do ranking (pedido do Silvio, 12/10/2026).
 
@@ -46,7 +48,6 @@ BASE = os.environ.get("FAROL_BASE", r"\\192.168.102.161\rmr\2026")
 SAIDA = os.environ.get("FAROL_SAIDA", os.path.join(RAIZ, "data", "farol.json"))
 CONFERENCIA = os.path.join(os.path.dirname(SAIDA), "conferencia-desempate.md")
 MESES = fb.MESES
-TETO = 1.5
 MENOR_MELHOR = ("custo", "pacote", "turnover", "absente", "incidente", "acidente",
                 "ocorr", "despesa", "perda", "avaria", "dias", "prazo", "inadimpl")
 
@@ -166,7 +167,7 @@ def direcao(mt):
 
 
 def superacao(meta, real, sentido):
-    """Quanto o real superou a meta (1 = bateu a meta), com teto de 150%.
+    """Quanto o real superou a meta (1 = bateu a meta). Sem teto; o piso e 0.
 
     Mesmo sinal: razao, como nos proprios farois (real/meta; meta/real se menor e melhor).
     Sinais diferentes ou real zerado: 1 + desvio relativo a meta. Ex.: margem do Bruno Fonseca
@@ -178,7 +179,7 @@ def superacao(meta, real, sentido):
         x = real / meta if sentido > 0 else meta / real
     else:
         x = 1 + sentido * (real - meta) / abs(meta)
-    return round(min(max(x, 0.0), TETO), 4)
+    return round(max(x, 0.0), 4)
 
 
 def sup_meta(mt, chave, meses):
@@ -227,7 +228,7 @@ def fmt(v):
 
 def gravar_conferencia(linhas, gerado):
     out = ["# Conferencia do desempate (YTD)", "",
-           "Gerado em %s. Superacao = real / meta (ou meta / real quando menor e melhor), teto de 150%%." % gerado,
+           "Gerado em %s. Superacao = real / meta (ou meta / real quando menor e melhor), sem teto." % gerado,
            "Empate no maior peso: vale a media. Sem bloco ACUMULADO no farol: media dos meses.", "",
            "| Lideranca | % YTD | Meta de maior peso | Peso | Meta | Real | Sentido | Superacao | Origem | Desempate |",
            "|---|---|---|---|---|---|---|---|---|---|"]

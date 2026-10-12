@@ -10,12 +10,12 @@ Ranking das lideranças da Supporte pelo Farol de Metas, no formato do slide 33 
 | O quê | Como |
 |---|---|
 | % da liderança | Linha "Atingimento" do farol de cada pessoa. No YTD, é a coluna do Peso; no mês, a coluna Meta daquele mês. |
-| Desempate | Superação da meta de maior peso: real ÷ meta, ou meta ÷ real quando menor é melhor (custo, pacote, turnover). Tem teto de 150%. Se duas metas empatam no maior peso, vale a média delas. Persistindo o empate, decide a superação média ponderada de todas as metas. |
+| Desempate | Superação da meta de maior peso: real ÷ meta, ou meta ÷ real quando menor é melhor (custo, pacote, turnover). Sem teto: um resultado muito acima de uma meta pequena aparece inteiro, como os 1055% do Erick. Se duas metas empatam no maior peso, vale a média delas. Persistindo o empate, decide a superação média ponderada de todas as metas. |
 | Multiplicador | 1º ao 4º: 1,5x. 5º ao 8º: 1,2x. 4 últimos: 0,25x. Demais: 1,0x. |
 | Quem entra | As lideranças do slide 33, listadas em `etl/liderancas.json`. Quem não tem farol na pasta continua na lista, marcado "sem farol de metas", e vai para o fim do ranking, o que conta para o multiplicador. No mês, vale o mesmo para quem não lançou aquele mês. |
 | Mês padrão | O último mês em que a maioria já lançou o real. Os meses ainda em apuração aparecem como "(parcial)". |
 
-**Por que o desempate mudou em relação ao slide.** O slide usava real ÷ meta sem teto e sem olhar o sentido da meta. Isso passava de 1000% quando a meta era pequena perto do realizado e punia quem ia bem em meta de custo.
+**O que mudou em relação ao slide.** Só o sentido da meta: o slide usava real ÷ meta também nas metas de custo e punia quem gastava menos. Teto de 150% chegou a ser usado e foi retirado em 12/10/2026, porque invertia a ordem Tiago x Livânia em agosto.
 
 **Conferência.** Cada atualização grava `data/conferencia-desempate.md`. O arquivo traz, para cada liderança, a meta de maior peso com a meta, o real, o sentido e a superação usados no desempate, para conferir contra o Excel.
 
