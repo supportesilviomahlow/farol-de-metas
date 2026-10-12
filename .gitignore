@@ -1,0 +1,16 @@
+node_modules/
+web/.output/
+web/.nitro/
+web/client/dist/
+__pycache__/
+*.tmp
+~$*
+
+# Credencial e Python do servidor: vivem so no 173
+.env
+venv/
+
+# Dado pessoal (nome, % e farol por lideranca): gerado pelo etl, nao vai para o git (LGPD)
+data/
+esbocos/
+Base Slide/

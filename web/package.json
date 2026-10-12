@@ -1,0 +1,32 @@
+{
+  "name": "farol-de-metas-web",
+  "private": true,
+  "type": "module",
+  "description": "Farol de Metas - ranking das liderancas (Mes, YTD e Simulador). Nitro + React.",
+  "scripts": {
+    "dev": "concurrently -n servidor,cliente -c yellow,cyan \"nitro dev --port 3010\" \"vite --config client/vite.config.js\"",
+    "dev:servidor": "nitro dev --port 3010",
+    "dev:cliente": "vite --config client/vite.config.js",
+    "build": "vite build --config client/vite.config.js && nitro build",
+    "preview": "node .output/server/index.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.575.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.1",
+    "tailwind-merge": "^3.5.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.2.1",
+    "@vitejs/plugin-react": "^5.0.4",
+    "concurrently": "^9.2.1",
+    "nitropack": "^2.12.10",
+    "tailwindcss": "^4.2.1",
+    "vite": "^7.3.1"
+  }
+}
