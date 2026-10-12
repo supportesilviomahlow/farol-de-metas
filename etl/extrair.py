@@ -36,7 +36,7 @@ Regras (combinadas com o Silvio em 10/10/2026):
 A cada rodada tambem grava data/conferencia-desempate.md: a meta de maior peso de cada um, com
 meta, real, sentido e superacao - para conferir o desempate contra o Excel.
 """
-import contextlib, json, os, shutil, sys, tempfile, time
+import contextlib, hashlib, json, os, shutil, sys, tempfile, time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import farol_base as fb  # noqa: E402
@@ -75,6 +75,11 @@ class Fonte:
         c = self.caminho(rel)
         return self.smb.path.isfile(c) if self.smb else os.path.isfile(c)
 
+    def assinatura(self, rel):
+        """(data de modificacao, tamanho) - muda quando alguem salva o farol."""
+        st = (self.smb.stat if self.smb else os.stat)(self.caminho(rel))
+        return [int(st.st_mtime), int(st.st_size)]
+
     @contextlib.contextmanager
     def local(self, rel):
         """Caminho local para o openpyxl. Pelo SMB, copia para um temporario e apaga depois."""
@@ -90,6 +95,38 @@ class Fonte:
             os.remove(tmp)
 
 
+CACHE = os.path.join(os.path.dirname(SAIDA), ".cache")
+
+
+def ler_com_cache(fonte, rel):
+    """Leitura bruta do farol (fb.extrair), guardada por arquivo. So rele quem mudou desde a
+    ultima vez: com os 44 farois na rede, reler tudo leva ~25 min pela VPN; sem mudancas, o
+    Atualizar termina em segundos. FAROL_SEM_CACHE=1 forca reler tudo."""
+    assinatura = fonte.assinatura(rel)
+    arq = os.path.join(CACHE, hashlib.sha1(rel.encode("utf-8")).hexdigest() + ".json")
+    if os.environ.get("FAROL_SEM_CACHE") != "1" and os.path.exists(arq):
+        try:
+            with open(arq, encoding="utf-8") as fh:
+                guardado = json.load(fh)
+            if guardado.get("assinatura") == assinatura and guardado.get("versao") == fb_versao():
+                return guardado["rec"]
+        except (OSError, ValueError):
+            pass
+    with fonte.local(rel) as caminho:
+        rec = fb.extrair(caminho)
+    os.makedirs(CACHE, exist_ok=True)
+    with open(arq + ".tmp", "w", encoding="utf-8") as fh:
+        json.dump({"assinatura": assinatura, "versao": fb_versao(), "rec": rec}, fh, ensure_ascii=False)
+    os.replace(arq + ".tmp", arq)
+    return rec
+
+
+def fb_versao():
+    """Muda quando o parser muda - invalida o cache sozinho depois de um deploy."""
+    with open(fb.__file__, "rb") as fh:
+        return hashlib.sha1(fh.read()).hexdigest()[:12]
+
+
 # ------------------------------------------------------------------ regras
 def ultimo_mes():
     forcado = os.environ.get("FAROL_ULTIMO_MES", "").strip().lower()
@@ -98,32 +135,49 @@ def ultimo_mes():
     return MESES[max(time.localtime().tm_mon - 2, 0)]
 
 
+def canonico(m, r):
+    """Custo lancado com sinal negativo (meta E real < 0, ex.: OpEx TI do Leo Resende) vira
+    magnitude positiva. Sentido e superacao sao sempre calculados sobre esses valores."""
+    if m is not None and r is not None and m < 0 and r < 0:
+        return -m, -r
+    return m, r
+
+
 def direcao(mt):
-    """+1 maior e melhor, -1 menor e melhor. Os meses dizem: real abaixo da meta com farol
-    cheio => menor e melhor. Sem evidencia, vale o nome do indicador."""
-    votos = 0
-    for d in mt["meses"].values():
-        m, r, a = d.get("meta"), d.get("real"), d.get("ating")
-        if m is None or r is None or a is None or m == r:
-            continue
+    """+1 maior e melhor, -1 menor e melhor.
+
+    Evidencia: real abaixo da meta com farol cheio => menor e melhor. O ACUMULADO (meta/real
+    acumulados + farol acumulado) vale 2 votos e cada mes 1: no farol do Romario o farol do mes
+    diz 100% com real 62% contra meta 80% (e ate com real zerado), mas o acumulado diz 0% - o
+    mensal daquela planilha nao e confiavel (12/10/2026). Mes com real zerado nao vota (e
+    lancamento pendente, nao resultado). Sem evidencia, vale o nome do indicador."""
+    def voto(m, r, a):
+        m, r = canonico(m, r)
+        if m is None or r is None or a is None or m == r or r == 0:
+            return 0
         cheio = a >= 0.999
-        votos += (-1 if cheio else 1) if r < m else (1 if cheio else -1)
+        return (-1 if cheio else 1) if r < m else (1 if cheio else -1)
+
+    votos = sum(voto(d.get("meta"), d.get("real"), d.get("ating")) for d in mt["meses"].values())
+    votos += 2 * voto(mt.get("meta_acum"), mt.get("real_acum"), mt.get("ating"))
     if votos:
         return 1 if votos > 0 else -1
     return -1 if any(k in fb.norm(mt["indicador"]) for k in MENOR_MELHOR) else 1
 
 
 def superacao(meta, real, sentido):
+    """Quanto o real superou a meta (1 = bateu a meta), com teto de 150%.
+
+    Mesmo sinal: razao, como nos proprios farois (real/meta; meta/real se menor e melhor).
+    Sinais diferentes ou real zerado: 1 + desvio relativo a meta. Ex.: margem do Bruno Fonseca
+    com meta -23,2% e real +10,6% - a razao dava 45% (punia quem foi muito melhor que a meta)."""
+    meta, real = canonico(meta, real)
     if meta in (None, 0) or real is None:
         return None
-    if meta < 0 or real < 0:  # custo lancado com sinal negativo em alguns farois
-        meta, real = abs(meta), abs(real)
-    if sentido < 0:
-        if not real:
-            return None
-        x = meta / real
+    if meta > 0 and real > 0:
+        x = real / meta if sentido > 0 else meta / real
     else:
-        x = real / meta
+        x = 1 + sentido * (real - meta) / abs(meta)
     return round(min(max(x, 0.0), TETO), 4)
 
 
@@ -166,7 +220,7 @@ def desempates(metas, chave, meses):
 def fmt(v):
     if v is None:
         return "-"
-    if abs(v) <= 2 and not float(v).is_integer():
+    if abs(v) <= 2:
         return ("%.2f%%" % (v * 100)).replace(".", ",")
     return ("{:,.0f}".format(v)).replace(",", ".")
 
@@ -220,8 +274,7 @@ def main():
                 problemas.append("%s: nao esta na pasta - %s fica(m) sem farol" % (rel, ", ".join(nomes)))
                 print("sem-farol %s" % rel, flush=True)
                 continue
-            with fonte.local(rel) as caminho:
-                rec = fb.extrair(caminho)
+            rec = ler_com_cache(fonte, rel)
         except Exception as e:  # farol aberto, corrompido, rede caiu...
             sem_farol(nomes, "erro ao ler")
             problemas.append("%s: %s" % (rel, e))
@@ -237,6 +290,13 @@ def main():
         for mt in rec["metas"]:
             mt["sentido"] = direcao(mt)
         tot = rec.get("total") or {}
+        # Mes so conta como lancado se alguma meta tem meta E real numericos nele. Nos farois que
+        # reaproveitam um bloco para o mes corrente (Leo Resende, Maraiza, Weberson), os outros
+        # meses ficam com #REF! e a linha Atingimento da 0% - isso e "nao lancou", nao 0%.
+        def lancado(m):
+            return any(isinstance(mt["meses"].get(m, {}).get("meta"), float)
+                       and isinstance(mt["meses"].get(m, {}).get("real"), float) for mt in rec["metas"])
+        tot["meses"] = {m: v for m, v in (tot.get("meses") or {}).items() if lancado(m)}
 
         desemp, desemp2 = {}, {}
         for chave in ["acum"] + meses:

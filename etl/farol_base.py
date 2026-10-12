@@ -178,11 +178,12 @@ def mapear(g, hdr):
             m["acum"] = c
 
     marcos = sorted([(c, mes_de(t)) for c, t in lab.items() if mes_de(t)])
-    # Com os 12 blocos presentes, vale a ORDEM e nao o rotulo (10/10/2026): no farol do
-    # Rodolfo o bloco de maio esta escrito "Agosto", e o setdefault abaixo jogava maio em
-    # agosto e perdia o agosto de verdade.
-    if len(marcos) == 12 and len({m for _, m in marcos}) < 12:
-        marcos = [(c, MESES[i]) for i, (c, _) in enumerate(marcos)]
+    # Vale o ROTULO, nao a ordem dos blocos (12/10/2026). Nos farois do Leo Resende, Maraiza,
+    # Weberson e Rodolfo, quem preenche reaproveita um bloco e troca o rotulo para o mes que
+    # esta lancando (ex.: o 2o bloco escrito "AGO" com os numeros de agosto); o bloco com o nome
+    # original do mes fica com #REF!. Com rotulo repetido, o setdefault abaixo fica com o
+    # PRIMEIRO, que e o reaproveitado. Em 10/10 tentei mapear pela ordem e isso jogava agosto
+    # em fevereiro - nao refazer.
     limites = [c for c, _ in marcos] + [MAX_COLS]
     m["meses"] = {}
     for i, (c0, mes) in enumerate(marcos):

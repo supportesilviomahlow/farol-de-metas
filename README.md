@@ -92,6 +92,9 @@ O app mostra o desempenho e o multiplicador de abono por nome. Sem login, qualqu
 ## Pendências conhecidas
 
 1. **Faróis do Francis, do Lucas Bueno e do Rodolfo:** não têm o bloco "ACUMULADO" com meta e real. O desempate do YTD usa a média da superação dos meses.
-2. **Farol do Rodolfo:** o bloco de maio está rotulado "Agosto", e a maioria das células dá `#REF!`. O leitor usa a ordem dos 12 blocos de mês.
+2. **Faróis do Leo Resende, da Maraíza, do Weberson e do Rodolfo:** quem preenche reaproveita um bloco de mês e troca o rótulo para o mês que está lançando. Os outros meses ficam com `#REF!`.
+   - O leitor usa o primeiro bloco com o rótulo do mês.
+   - Mês sem meta e real numéricos conta como "não lançado": a pessoa aparece como sem farol naquele mês.
+   - Não mapear os meses pela ordem dos blocos: isso jogava agosto em fevereiro.
 3. **Faróis da Elyana e do Túlio:** as metas não fecham com a linha "Atingimento" da própria planilha.
 4. **Farol do Ivanaldo:** lançado só até julho.
