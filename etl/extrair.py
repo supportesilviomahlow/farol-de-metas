@@ -240,8 +240,14 @@ def gravar_conferencia(linhas, gerado):
 
 # ------------------------------------------------------------------ principal
 def main():
-    lista = json.load(open(os.path.join(RAIZ, "etl", "liderancas.json"), encoding="utf-8"))
-    lista.pop("_comentario", None)
+    # Dois rankings: liderancas (slide 33) e diretoria (slides 30 e 36).
+    entradas = []  # (arquivo, [(nome, area)], grupo)
+    lid = json.load(open(os.path.join(RAIZ, "etl", "liderancas.json"), encoding="utf-8"))
+    lid.pop("_comentario", None)
+    entradas += [(rel, [(n, None) for n in nomes], "liderancas") for rel, nomes in lid.items()]
+    dire = json.load(open(os.path.join(RAIZ, "etl", "diretoria.json"), encoding="utf-8"))
+    dire.pop("_comentario", None)
+    entradas += [(rel, [(d["nome"], d["area"])], "diretoria") for rel, d in dire.items()]
     ult = ultimo_mes()
     meses = MESES[:MESES.index(ult) + 1]
     try:
@@ -258,20 +264,20 @@ def main():
         print("FALHOU: nao consegui abrir a pasta dos farois (%s): %s" % (BASE, motivo), flush=True)
         sys.exit(2)
     pessoas, problemas, conferencia = [], [], []
-    print("total %d" % len(lista), flush=True)
+    print("total %d" % len(entradas), flush=True)
 
     def sem_farol(nomes, motivo):
-        for nome in nomes:
-            pessoas.append({"id": fb.norm(nome).replace(" ", "-"), "nome": nome, "semFarol": True,
-                            "ytd": None, "mes": {}, "desempate": {}, "desempate2": {}, "metas": []})
+        for nome, area in nomes:
+            pessoas.append({"id": fb.norm(nome).replace(" ", "-"), "nome": nome, "grupo": grupo, "area": area,
+                            "semFarol": True, "ytd": None, "mes": {}, "desempate": {}, "desempate2": {}, "metas": []})
             conferencia.append("| %s | - | sem farol de metas (%s) | | | | | | | |" % (nome, motivo))
 
-    for rel, nomes in lista.items():
+    for rel, nomes, grupo in entradas:
         t0 = time.time()
         try:
             if not fonte.existe(rel):
                 sem_farol(nomes, "arquivo nao esta na pasta")
-                problemas.append("%s: nao esta na pasta - %s fica(m) sem farol" % (rel, ", ".join(nomes)))
+                problemas.append("%s: nao esta na pasta - %s fica(m) sem farol" % (rel, ", ".join(n for n, _ in nomes)))
                 print("sem-farol %s" % rel, flush=True)
                 continue
             rec = ler_com_cache(fonte, rel)
@@ -304,10 +310,12 @@ def main():
             if chave == "acum":
                 topo_ytd = topo
 
-        for nome in nomes:
+        for nome, area in nomes:
             pessoas.append({
                 "id": fb.norm(nome).replace(" ", "-"),
                 "nome": nome,
+                "grupo": grupo,
+                "area": area,
                 "ytd": tot.get("acum"),
                 "mes": {m: v for m, v in (tot.get("meses") or {}).items() if m in meses},
                 "desempate": desemp,
@@ -332,7 +340,8 @@ def main():
     # Mes padrao = o ultimo em que a maioria ja lancou o real da meta de maior peso. Em
     # 10/10/2026 setembro ainda estava pela metade (muita gente com 0% e real zerado).
     def completo(m):
-        return sum(1 for p in pessoas if p["desempate"].get(m)) >= 0.7 * len(pessoas)
+        lids = [p for p in pessoas if p["grupo"] == "liderancas"]
+        return sum(1 for p in lids if p["desempate"].get(m)) >= 0.7 * len(lids)
     padrao = next((m for m in reversed(meses) if completo(m)), ult)
 
     gerado = time.strftime("%d/%m/%Y %H:%M")

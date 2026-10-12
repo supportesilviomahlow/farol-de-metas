@@ -1,8 +1,8 @@
 // Peças da tela de ranking, no desenho do slide 33 do Call Nacional: faixa escura com o título e
 // o "GERAL" em laranja, e a lista em duas colunas (#, Mult., Liderança, %, Desempate).
 // Menos é mais (pedido do Silvio): o drilldown mostra só a meta, o peso e o farol.
-import { Fragment } from 'react';
-import { ArrowDown, ArrowUp, ChevronDown, ChevronsDown, ChevronsUp } from 'lucide-react';
+import { Fragment, useState } from 'react';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronsDown, ChevronsUp, Presentation } from 'lucide-react';
 import { cn } from '../lib/cn.js';
 import { mult, pct } from '../lib/formato.js';
 import { GRAUS, chaveSim, grauMeta } from '../lib/ranking.js';
@@ -219,5 +219,89 @@ export function TabelaRanking({ lista, regra, base, abertos, alternar, posOrigin
       <Coluna itens={lista.slice(0, meio)} {...props} />
       <Coluna itens={lista.slice(meio)} {...props} />
     </div>
+  );
+}
+
+/** Ranking diretoria, no desenho do slide 36: linha grande com área, % e barra. */
+export function TabelaDiretoria({ lista, base, abertos, alternar, posOriginal, sim, aoSimular }) {
+  const th = 'bg-muted px-3 py-4 font-["Titillium_Web"] text-[13px] font-semibold uppercase tracking-[0.14em] text-muted-foreground';
+  const corPos = (pos) => (pos === 1 ? 'text-primary' : pos === 2 ? 'text-muted-foreground' : pos === 3 ? 'text-bronze' : 'text-muted-foreground/60');
+  const barraPos = (pos) => (pos === 1 ? 'bg-primary' : pos === 2 ? 'bg-muted-foreground' : pos === 3 ? 'bg-bronze' : 'bg-transparent');
+  return (
+    <table className="w-full border-collapse border border-border bg-card">
+      <thead>
+        <tr>
+          <th className={cn(th, 'w-20 text-center')}>#</th>
+          <th className={cn(th, 'text-left')}>Liderança</th>
+          <th className={cn(th, 'w-64 text-center')}>Área</th>
+          <th className={cn(th, 'w-28 text-center')}>%</th>
+          <th className={cn(th, 'w-36 text-center')}>Desempate</th>
+          <th className={cn(th, 'w-72 text-left')}>Barra</th>
+          <th className={cn(th, 'w-8')} />
+        </tr>
+      </thead>
+      <tbody>
+        {lista.map((x) => {
+          const aberto = abertos.has(x.pessoa.id);
+          const mov = posOriginal ? posOriginal.get(x.pessoa.id) - x.pos : 0;
+          return (
+            <Fragment key={x.pessoa.id}>
+              <tr onClick={() => alternar(x.pessoa.id)} aria-expanded={aberto}
+                className={cn('cursor-pointer border-b border-border hover:bg-realce', x.pos % 2 === 0 && 'bg-background/50')}>
+                <td className="relative py-5 text-center">
+                  <span className={cn('absolute bottom-2 left-0 top-2 w-[6px]', barraPos(x.pos))} aria-hidden />
+                  <span className={cn('font-["Titillium_Web"] text-[34px] font-bold', corPos(x.pos))}>{x.pos}</span>
+                </td>
+                <td className="px-3 py-5">
+                  <div className="text-[20px] font-bold uppercase leading-tight">
+                    {x.pessoa.nome}
+                    {mov !== 0 && (
+                      <span className={cn('ml-2 inline-flex items-center text-[12px] font-semibold normal-case', mov > 0 ? 'text-success' : 'text-destructive')}>
+                        {mov > 0 ? <ArrowUp className="h-3 w-3" aria-hidden /> : <ArrowDown className="h-3 w-3" aria-hidden />}{Math.abs(mov)}
+                      </span>
+                    )}
+                    {x.semFarol && (
+                      <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-[10.5px] font-semibold normal-case text-muted-foreground">sem farol de metas</span>
+                    )}
+                  </div>
+                  <div className="text-[14px] text-muted-foreground">{x.pessoa.area}</div>
+                </td>
+                <td className="px-3 text-center">
+                  <span className="inline-block w-full rounded-lg border border-primary bg-realce px-3 py-2 text-[14px] font-semibold text-laranja-texto">{x.pessoa.area}</span>
+                </td>
+                <td className={cn('text-center font-["Titillium_Web"] text-[32px] font-bold', x.pct >= 0.995 ? 'text-laranja-texto' : 'text-muted-foreground')}>{pct(x.pct)}</td>
+                <td className="text-center text-[17px] text-muted-foreground">{pct(x.des, 1)}</td>
+                <td className="px-3">
+                  <div className="h-7 w-full bg-muted" aria-hidden>
+                    <div className={cn('h-full', x.pos === 1 ? 'bg-primary' : 'bg-bronze')} style={{ width: `${Math.min(1, x.pct || 0) * 100}%` }} />
+                  </div>
+                  <div className="mt-1 text-right text-[12px] text-muted-foreground">{pct(x.pct)}</div>
+                </td>
+                <td className="text-muted-foreground"><ChevronDown className={cn('h-4 w-4 transition-transform', aberto && 'rotate-180')} aria-hidden /></td>
+              </tr>
+              {aberto && (
+                <tr><td colSpan={7} className="p-0"><DetalheMetas pessoa={x.pessoa} base={base} sim={sim} aoSimular={aoSimular} /></td></tr>
+              )}
+            </Fragment>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+/** Botão da faixa escura: baixa o .pptx igual ao slide do Call Nacional. */
+export function BotaoExportar({ aoExportar }) {
+  const [gerando, setGerando] = useState(false);
+  const clicar = async () => {
+    setGerando(true);
+    try { await aoExportar(); } finally { setGerando(false); }
+  };
+  return (
+    <button type="button" onClick={clicar} disabled={gerando}
+      className="inline-flex items-center gap-2 rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-white/20 disabled:opacity-70">
+      <Presentation className="h-4 w-4" aria-hidden />
+      {gerando ? 'Gerando…' : 'Exportar PowerPoint'}
+    </button>
   );
 }

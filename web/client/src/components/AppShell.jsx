@@ -19,12 +19,15 @@ function lerTema() {
   return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
 }
 
-const ITENS_RANKING = [
+const ITENS_LIDERANCAS = [
   { para: '/mes', rotulo: 'Mês', Icone: Calendar },
   { para: '/ytd', rotulo: 'Year to date', Icone: CalendarRange },
-];
-const ITENS_CENARIOS = [
   { para: '/simulador', rotulo: 'Simulador', Icone: SlidersHorizontal },
+];
+const ITENS_DIRETORIA = [
+  { para: '/diretoria/mes', rotulo: 'Mês', Icone: Calendar },
+  { para: '/diretoria/ytd', rotulo: 'Year to date', Icone: CalendarRange },
+  { para: '/diretoria/simulador', rotulo: 'Simulador', Icone: SlidersHorizontal },
 ];
 
 function ItemMenu({ item, ativo }) {
@@ -81,9 +84,9 @@ export default function AppShell({ gerado, aoAtualizar, children }) {
           <nav className="flex-1 overflow-y-auto px-3 py-4">
             <div className="flex flex-col gap-1">
               <Secao titulo="Ranking de lideranças" />
-              {ITENS_RANKING.map((i) => <ItemMenu key={i.para} item={i} ativo={pathname === i.para} />)}
-              <Secao titulo="Cenários" />
-              {ITENS_CENARIOS.map((i) => <ItemMenu key={i.para} item={i} ativo={pathname === i.para} />)}
+              {ITENS_LIDERANCAS.map((i) => <ItemMenu key={i.para} item={i} ativo={pathname === i.para} />)}
+              <Secao titulo="Ranking diretoria" />
+              {ITENS_DIRETORIA.map((i) => <ItemMenu key={i.para} item={i} ativo={pathname === i.para} />)}
             </div>
           </nav>
           <div className="flex flex-col gap-2 border-t border-sidebar-border px-3 py-3">

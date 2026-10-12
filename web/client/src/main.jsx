@@ -40,9 +40,13 @@ function App() {
   else {
     conteudo = (
       <Routes>
-        <Route path="/mes" element={<Ranking key="mes" dados={dados} tipo="mes" />} />
-        <Route path="/ytd" element={<Ranking key="ytd" dados={dados} tipo="ytd" />} />
-        <Route path="/simulador" element={<Simulador dados={dados} />} />
+        {/* Lideranças ficam nos endereços originais (/mes, /ytd, /simulador): o link já foi divulgado. */}
+        <Route path="/mes" element={<Ranking key="l-mes" dados={dados} tipo="mes" grupo="liderancas" />} />
+        <Route path="/ytd" element={<Ranking key="l-ytd" dados={dados} tipo="ytd" grupo="liderancas" />} />
+        <Route path="/simulador" element={<Simulador key="l-sim" dados={dados} grupo="liderancas" />} />
+        <Route path="/diretoria/mes" element={<Ranking key="d-mes" dados={dados} tipo="mes" grupo="diretoria" />} />
+        <Route path="/diretoria/ytd" element={<Ranking key="d-ytd" dados={dados} tipo="ytd" grupo="diretoria" />} />
+        <Route path="/diretoria/simulador" element={<Simulador key="d-sim" dados={dados} grupo="diretoria" />} />
         <Route path="*" element={<Navigate to="/ytd" replace />} />
       </Routes>
     );
