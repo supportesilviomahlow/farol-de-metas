@@ -2,7 +2,7 @@
 // o "GERAL" em laranja, e a lista em duas colunas (#, Mult., Liderança, %, Desempate).
 // Menos é mais (pedido do Silvio): o drilldown mostra só a meta, o peso e o farol.
 import { Fragment, useState } from 'react';
-import { ArrowDown, ArrowUp, ChevronDown, ChevronsDown, ChevronsUp, Presentation } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronsDown, ChevronsUp, Presentation, TriangleAlert } from 'lucide-react';
 import { cn } from '../lib/cn.js';
 import { mult, pct } from '../lib/formato.js';
 import { GRAUS, chaveSim, grauMeta } from '../lib/ranking.js';
@@ -63,6 +63,16 @@ export function ReguaMultiplicador({ regra }) {
       {faixa(1.0, 'demais')}
       {faixa(0.25, `${regra.q025} últimos`)}
     </div>
+  );
+}
+
+/** Quem não preencheu o farol (arquivo fora da pasta ou mês sem lançamento): fica em último, N/A. */
+function NaoPreencheu() {
+  return (
+    <span className="ml-2 inline-flex items-center gap-1 rounded-full border border-destructive/50 bg-destructive/10 px-2 py-0.5 align-middle text-[10.5px] font-semibold normal-case tracking-normal text-destructive">
+      <TriangleAlert className="h-3 w-3" aria-hidden />
+      não preencheu
+    </span>
   );
 }
 
@@ -175,11 +185,7 @@ function Coluna({ itens, n, regra, base, abertos, alternar, posOriginal, sim, ao
                 <td className={cn(td, 'text-center')}><SeloMult m={x.mult} /></td>
                 <td className={cn(td, 'uppercase tracking-[0.01em]', x.pos <= 3 && 'font-bold')}>
                   {x.pessoa.nome}
-                  {x.semFarol && (
-                    <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-[10.5px] font-semibold normal-case tracking-normal text-muted-foreground">
-                      sem farol de metas
-                    </span>
-                  )}
+                  {x.semFarol && <NaoPreencheu />}
                   {mov !== 0 && (
                     <span className={cn('ml-1.5 inline-flex items-center text-[11px] font-semibold normal-case', mov > 0 ? 'text-success' : 'text-destructive')}>
                       {mov > 0 ? <ArrowUp className="h-3 w-3" aria-hidden /> : <ArrowDown className="h-3 w-3" aria-hidden />}
@@ -188,8 +194,8 @@ function Coluna({ itens, n, regra, base, abertos, alternar, posOriginal, sim, ao
                     </span>
                   )}
                 </td>
-                <td className={cn(td, 'text-right font-bold', x.pct != null && x.pct >= 0.855 && 'text-laranja-texto')}>{pct(x.pct)}</td>
-                <td className={cn(td, 'text-right text-muted-foreground')}>{pct(x.des, 1)}</td>
+                <td className={cn(td, 'text-right font-bold', x.semFarol ? 'text-destructive' : x.pct >= 0.855 && 'text-laranja-texto')}>{x.semFarol ? 'N/A' : pct(x.pct)}</td>
+                <td className={cn(td, 'text-right text-muted-foreground')}>{x.semFarol ? 'N/A' : pct(x.des, 1)}</td>
                 <td className={cn(td, 'text-muted-foreground')}>
                   <ChevronDown className={cn('h-4 w-4 transition-transform', aberto && 'rotate-180')} aria-hidden />
                 </td>
@@ -260,22 +266,20 @@ export function TabelaDiretoria({ lista, base, abertos, alternar, posOriginal, s
                         {mov > 0 ? <ArrowUp className="h-3 w-3" aria-hidden /> : <ArrowDown className="h-3 w-3" aria-hidden />}{Math.abs(mov)}
                       </span>
                     )}
-                    {x.semFarol && (
-                      <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-[10.5px] font-semibold normal-case text-muted-foreground">sem farol de metas</span>
-                    )}
+                    {x.semFarol && <NaoPreencheu />}
                   </div>
                   <div className="text-[14px] text-muted-foreground">{x.pessoa.area}</div>
                 </td>
                 <td className="px-3 text-center">
                   <span className="inline-block w-full rounded-lg border border-primary bg-realce px-3 py-2 text-[14px] font-semibold text-laranja-texto">{x.pessoa.area}</span>
                 </td>
-                <td className={cn('text-center font-["Titillium_Web"] text-[32px] font-bold', x.pct >= 0.995 ? 'text-laranja-texto' : 'text-muted-foreground')}>{pct(x.pct)}</td>
-                <td className="text-center text-[17px] text-muted-foreground">{pct(x.des, 1)}</td>
+                <td className={cn('text-center font-["Titillium_Web"] text-[32px] font-bold', x.semFarol ? 'text-destructive' : x.pct >= 0.995 ? 'text-laranja-texto' : 'text-muted-foreground')}>{x.semFarol ? 'N/A' : pct(x.pct)}</td>
+                <td className="text-center text-[17px] text-muted-foreground">{x.semFarol ? 'N/A' : pct(x.des, 1)}</td>
                 <td className="px-3">
                   <div className="h-7 w-full bg-muted" aria-hidden>
                     <div className={cn('h-full', x.pos === 1 ? 'bg-primary' : 'bg-bronze')} style={{ width: `${Math.min(1, x.pct || 0) * 100}%` }} />
                   </div>
-                  <div className="mt-1 text-right text-[12px] text-muted-foreground">{pct(x.pct)}</div>
+                  <div className="mt-1 text-right text-[12px] text-muted-foreground">{x.semFarol ? 'N/A' : pct(x.pct)}</div>
                 </td>
                 <td className="text-muted-foreground"><ChevronDown className={cn('h-4 w-4 transition-transform', aberto && 'rotate-180')} aria-hidden /></td>
               </tr>

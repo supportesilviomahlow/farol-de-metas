@@ -8,12 +8,12 @@ import { MES_NOME } from './ranking.js';
 const COR = {
   laranja: 'EC6608', preto: '1C1C1B', cinzaTexto: '575756', cinza: '8A8A89', cinzaClaro: '9D9D9C',
   bronze: 'B87333', bronzeBarra: 'C8793A', borda: 'DEDEDD', faixa: 'F2F1EF', zebra: 'F7F7F6',
-  chip: 'FDF0E6', trilho: 'E4E4E3', branco: 'FFFFFF',
+  chip: 'FDF0E6', trilho: 'E4E4E3', branco: 'FFFFFF', vermelho: 'C0392B',
 };
 const PX = 144; // 1920 px = 13,333 pol (LAYOUT_WIDE)
 const caixa = (x, y, w, h) => ({ x: x / PX, y: y / PX, w: w / PX, h: h / PX });
 const pct = (x, casas = 0) => (x == null ? '–'
-  : `${(x * 100).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas })}%`);
+  : `${(x * 100).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas, useGrouping: false })}%`);
 
 function retangulo(pptx, s, x, y, w, h, cor, borda) {
   s.addShape(pptx.ShapeType.rect, {
@@ -23,7 +23,7 @@ function retangulo(pptx, s, x, y, w, h, cor, borda) {
 }
 
 function texto(s, t, x, y, w, h, o = {}) {
-  s.addText(String(t), {
+  s.addText(Array.isArray(t) ? t : String(t), {
     ...caixa(x, y, w, h), fontFace: 'Calibri', fontSize: 12, color: COR.preto, margin: 0,
     valign: 'middle', align: 'left', fit: 'none', ...o,
   });
@@ -35,6 +35,16 @@ function cabecalho(pptx, s, titulo, geral, alturaFaixa) {
   texto(s, titulo, 52, 8, 1100, 124, { fontSize: 44, bold: true, color: COR.branco });
   retangulo(pptx, s, 1458, 18, 425, 102, COR.laranja);
   texto(s, `GERAL  ${pct(geral, 1)}`, 1458, 18, 425, 102, { fontSize: 24, bold: true, color: COR.branco, align: 'center' });
+}
+
+/** Nome em maiúsculas; quem não preencheu o farol ganha "NÃO PREENCHEU" em vermelho ao lado. */
+function nomeComAviso(x, negrito, tamanhoAviso = 9) {
+  const nome = x.pessoa.nome.toUpperCase();
+  if (!x.semFarol) return nome;
+  return [
+    { text: nome, options: { bold: negrito } },
+    { text: '   NÃO PREENCHEU', options: { bold: true, color: COR.vermelho, fontSize: tamanhoAviso } },
+  ];
 }
 
 // ------------------------------------------------------------------ slide 33 (lideranças)
@@ -57,10 +67,11 @@ function colunaLiderancas(pptx, s, itens, dx) {
     } else {
       texto(s, x.pos, dx + 20, y, 72, alt, { color: COR.cinza, align: 'center' });
     }
-    texto(s, x.pessoa.nome.toUpperCase(), dx + 114, y, 540, alt, { bold: x.pos <= 3 });
-    const alto = x.pct != null && x.pct >= 0.855;
-    texto(s, pct(x.pct), dx + 652, y, 120, alt, { bold: true, align: 'center', color: alto ? COR.laranja : COR.cinzaTexto });
-    texto(s, pct(x.des, 1), dx + 740, y, 160, alt, { color: COR.cinzaClaro, align: 'right' });
+    texto(s, nomeComAviso(x, x.pos <= 3), dx + 114, y, 540, alt, { bold: x.pos <= 3 });
+    const alto = !x.semFarol && x.pct >= 0.855;
+    texto(s, x.semFarol ? 'N/A' : pct(x.pct), dx + 652, y, 120, alt,
+      { bold: true, align: 'center', color: x.semFarol ? COR.vermelho : alto ? COR.laranja : COR.cinzaTexto });
+    texto(s, x.semFarol ? 'N/A' : pct(x.des, 1), dx + 740, y, 160, alt, { color: COR.cinzaClaro, align: 'right' });
   });
   return y0 + itens.length * alt;
 }
@@ -99,18 +110,19 @@ function slideDiretoria(pptx, titulo, geral, lista) {
     const corPos = [COR.laranja, COR.cinza, COR.bronzeBarra][x.pos - 1];
     if (corPos) retangulo(pptx, s, 18, y + 10, 14, alt - 20, corPos);
     texto(s, x.pos, 50, y, 78, alt, { fontSize: 28, bold: true, align: 'center', color: corPos || COR.cinzaClaro });
-    texto(s, x.pessoa.nome.toUpperCase(), 168, y + 22, 640, 56, { fontSize: 18, bold: true });
+    texto(s, nomeComAviso(x, true, 11), 168, y + 22, 640, 56, { fontSize: 18, bold: true });
     texto(s, x.pessoa.area || '', 168, y + 78, 640, 40, { fontSize: 12, color: COR.cinzaClaro });
     s.addShape(pptx.ShapeType.roundRect, {
       ...caixa(835, y + 38, 356, 62), rectRadius: 0.06, fill: { color: COR.chip }, line: { color: COR.laranja, width: 0.75 },
     });
     texto(s, x.pessoa.area || '', 835, y + 38, 356, 62, { fontSize: 11, bold: true, color: COR.laranja, align: 'center' });
-    const cheio = x.pct != null && x.pct >= 0.995;
-    texto(s, pct(x.pct), 1220, y, 160, alt, { fontSize: 28, bold: true, align: 'center', color: cheio ? COR.laranja : COR.cinzaTexto });
-    texto(s, pct(x.des, 1), 1405, y, 150, alt, { fontSize: 15, color: COR.cinzaTexto, align: 'center' });
+    const cheio = !x.semFarol && x.pct >= 0.995;
+    texto(s, x.semFarol ? 'N/A' : pct(x.pct), 1220, y, 160, alt,
+      { fontSize: 28, bold: true, align: 'center', color: x.semFarol ? COR.vermelho : cheio ? COR.laranja : COR.cinzaTexto });
+    texto(s, x.semFarol ? 'N/A' : pct(x.des, 1), 1405, y, 150, alt, { fontSize: 15, color: COR.cinzaTexto, align: 'center' });
     retangulo(pptx, s, 1593, y + 57, 290, 32, COR.trilho);
     if (x.pct) retangulo(pptx, s, 1593, y + 57, Math.max(1, Math.min(1, x.pct) * 290), 32, x.pos === 1 ? COR.laranja : COR.bronzeBarra);
-    texto(s, pct(x.pct), 1700, y + 100, 166, 28, { fontSize: 10, color: COR.cinzaClaro, align: 'right' });
+    texto(s, x.semFarol ? 'N/A' : pct(x.pct), 1700, y + 100, 166, 28, { fontSize: 10, color: COR.cinzaClaro, align: 'right' });
   });
 }
 
