@@ -3,9 +3,10 @@
 // Ordem: % do farol (linha "Atingimento" da planilha); empatou, decide o desempate (superação
 // da meta de maior peso, já calculada no etl/extrair.py); persistindo, a superação média
 // ponderada de todas as metas; por fim, o nome.
-// Multiplicador: os 4 primeiros 1,5x, os 4 seguintes 1,2x, os 4 últimos 0,25x e o resto 1,0x.
+// Multiplicador (padrão definido pelo Silvio em 13/10/2026): os 4 primeiros 1,5x, os 4 seguintes
+// 1,2x, os 8 últimos 0,25x (deflator) e o resto 1,0x.
 
-export const REGRA_PADRAO = { q15: 4, q12: 4, q025: 4 };
+export const REGRA_PADRAO = { q15: 4, q12: 4, q025: 8 };
 
 // Graus do farol, conforme o "Guia" das planilhas.
 export const GRAUS = [1, 0.9, 0.8, 0.6, 0];
