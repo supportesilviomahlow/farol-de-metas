@@ -36,6 +36,10 @@ existente, sem tocar nos demais:
 """
 import openpyxl, glob, os, json, re, unicodedata, time
 
+# Versao gravada no cache do etl/extrair.py. Mudar so quando uma correcao do parser afeta a
+# leitura de TODOS os farois (forca reler tudo). Correcao que afeta poucos: apagar so o cache deles.
+VERSAO_PARSER = "2026-10-13"
+
 BASE = os.environ.get("FAROL_BASE", "R:/2026/01 - Transportes/")
 OUT_DIR = os.environ.get("FAROL_OUT", os.path.join(BASE, "Dash DR"))
 ULTIMO_MES = os.environ.get("FAROL_ULTIMO_MES", "").strip().lower() or None
@@ -198,7 +202,8 @@ def mapear(g, hdr):
     # do farol acumulado em %. O mesmo rotulo reaparece dentro dos blocos mensais e
     # no bloco YTD, mas la sempre com sub-rotulo (Ating/Parcial) - esses nao servem.
     for c in sorted(lab):
-        if c < primeiro_mes and lab[c] == "farol de metas" and c not in sub:
+        # "Farol " (so a palavra, com espaco no fim) no farol do Leonardo Bortoletto (13/10/2026)
+        if c < primeiro_mes and lab[c] in ("farol de metas", "farol") and c not in sub:
             m["farol"] = c
             break
 

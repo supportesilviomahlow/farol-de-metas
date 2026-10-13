@@ -9,7 +9,8 @@ Ranking das lideranças da Supporte pelo Farol de Metas, no formato do slide 33 
 
 | O quê | Como |
 |---|---|
-| % da liderança | Linha "Atingimento" do farol de cada pessoa. No YTD, é a coluna do Peso; no mês, a coluna Meta daquele mês. |
+| % da liderança | Soma de peso × farol de cada meta (ex.: meta de peso 20% com farol 90% vale 0,18). O farol de cada meta vem da coluna "Farol de Metas" (YTD) ou do bloco do mês. A linha "Atingimento" do Excel só vale quando falta o farol de alguma meta ou quando os pesos não somam 100%. Ela não é usada direto porque alguns faróis somam errado: média simples sem peso ou peso trocado na fórmula. As diferenças ficam listadas em `data/conferencia-desempate.md`. |
+| Simulador | Ao trocar o farol de uma meta, o % da pessoa é recalculado do zero pela mesma conta. |
 | Desempate | Superação da meta de maior peso: real ÷ meta, ou meta ÷ real quando menor é melhor (custo, pacote, turnover). Sem teto: um resultado muito acima de uma meta pequena aparece inteiro, como os 1055% do Erick. Se duas metas empatam no maior peso, vale a média delas. Persistindo o empate, decide a superação média ponderada de todas as metas. |
 | Multiplicador | 1º ao 4º: 1,5x. 5º ao 8º: 1,2x. 8 últimos: 0,25x (deflator). Demais: 1,0x. |
 | Quem entra | As lideranças do slide 33, listadas em `etl/liderancas.json`. Quem não tem farol na pasta continua na lista, marcado "sem farol de metas", e vai para o fim do ranking, o que conta para o multiplicador. No mês, vale o mesmo para quem não lançou aquele mês. |

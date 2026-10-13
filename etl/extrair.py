@@ -123,9 +123,10 @@ def ler_com_cache(fonte, rel):
 
 
 def fb_versao():
-    """Muda quando o parser muda - invalida o cache sozinho depois de um deploy."""
-    with open(fb.__file__, "rb") as fh:
-        return hashlib.sha1(fh.read()).hexdigest()[:12]
+    """Versao do parser gravada no cache. Mudar fb.VERSAO_PARSER obriga a reler todos os farois
+    (~25 min pela VPN, horas com a rede lenta) - so mudar quando a correcao afetar todo mundo.
+    Ate 13/10/2026 era o hash do farol_base.py, e qualquer ajuste pequeno relia tudo."""
+    return fb.VERSAO_PARSER
 
 
 # ------------------------------------------------------------------ regras
@@ -226,13 +227,30 @@ def fmt(v):
     return ("{:,.0f}".format(v)).replace(",", ".")
 
 
-def gravar_conferencia(linhas, gerado):
+def conta_peso(metas, chave):
+    """Soma de peso x farol das metas na chave ('acum' ou um mes). None quando falta o farol de
+    alguma meta com peso ou os pesos nao somam 100% - ai vale a linha Atingimento do Excel."""
+    com_peso = [mt for mt in metas if mt.get("peso")]
+    if not com_peso or abs(sum(mt["peso"] for mt in com_peso) - 1) > 0.02:
+        return None
+    graus = [mt["ating"] if chave == "acum" else mt["meses"].get(chave, {}).get("ating") for mt in com_peso]
+    if any(g is None for g in graus):
+        return None
+    return round(sum(mt["peso"] * g for mt, g in zip(com_peso, graus)), 4)
+
+
+def gravar_conferencia(linhas, gerado, diferencas=()):
     out = ["# Conferencia do desempate (YTD)", "",
            "Gerado em %s. Superacao = real / meta (ou meta / real quando menor e melhor), sem teto." % gerado,
            "Empate no maior peso: vale a media. Sem bloco ACUMULADO no farol: media dos meses.", "",
            "| Lideranca | % YTD | Meta de maior peso | Peso | Meta | Real | Sentido | Superacao | Origem | Desempate |",
            "|---|---|---|---|---|---|---|---|---|---|"]
     out += linhas
+    if diferencas:
+        out += ["", "## Onde o Excel soma diferente de peso x farol", "",
+                "O ranking usa a conta peso x farol. A linha Atingimento do Excel fica aqui para conferencia.", "",
+                "| Lideranca | Base | Excel (linha Atingimento) | Peso x farol (usado) |", "|---|---|---|---|"]
+        out += list(diferencas)
     tmp = CONFERENCIA + ".tmp"
     with open(tmp, "w", encoding="utf-8") as fh:
         fh.write("\n".join(out) + "\n")
@@ -264,7 +282,7 @@ def main():
         # Sem isto cada farol esperava o tempo limite da rede: 44 x ~20 s para dizer que caiu.
         print("FALHOU: nao consegui abrir a pasta dos farois (%s): %s" % (BASE, motivo), flush=True)
         sys.exit(2)
-    pessoas, problemas, conferencia = [], [], []
+    pessoas, problemas, conferencia, diferencas = [], [], [], []
     print("total %d" % len(entradas), flush=True)
 
     def sem_farol(nomes, motivo):
@@ -305,6 +323,17 @@ def main():
                        and isinstance(mt["meses"].get(m, {}).get("real"), float) for mt in rec["metas"])
         tot["meses"] = {m: v for m, v in (tot.get("meses") or {}).items() if lancado(m)}
 
+        # % da pessoa = soma de peso x farol de cada meta (regra do Silvio, 13/10/2026). A linha
+        # "Atingimento" do Excel so vale quando falta o farol de alguma meta ou os pesos nao
+        # fecham 100%. Motivo: farois que somam errado - Elyana (coluna Ating com peso 30% em
+        # metas de 20%: 92% no Excel, 78% na conta), Ivanaldo e Bruno Castro (media simples dos
+        # farois, sem peso: 88,3% e 70% no Excel, 86% e 67% na conta).
+        ytd_excel = tot.get("acum")
+        tot["acum"] = conta_peso(rec["metas"], "acum") if conta_peso(rec["metas"], "acum") is not None else ytd_excel
+        meses_excel = dict(tot["meses"])
+        tot["meses"] = {m: (conta_peso(rec["metas"], m) if conta_peso(rec["metas"], m) is not None else v)
+                        for m, v in tot["meses"].items()}
+
         desemp, desemp2 = {}, {}
         for chave in ["acum"] + meses:
             desemp[chave], desemp2[chave], topo = desempates(rec["metas"], chave, meses)
@@ -312,6 +341,11 @@ def main():
                 topo_ytd = topo
 
         for nome, area in nomes:
+            comparar = [("YTD", ytd_excel, tot.get("acum"))]
+            comparar += [(m, meses_excel[m], tot["meses"][m]) for m in meses if m in tot["meses"]]
+            for chave, excel, novo in comparar:
+                if excel is not None and novo is not None and abs(excel - novo) > 0.005:
+                    diferencas.append("| %s | %s | %s | %s |" % (nome, chave, fmt(excel), fmt(novo)))
             pessoas.append({
                 "id": fb.norm(nome).replace(" ", "-"),
                 "nome": nome,
@@ -367,7 +401,7 @@ def main():
     with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(dados, fh, ensure_ascii=False)
     os.replace(tmp, SAIDA)  # o servidor nunca le um arquivo pela metade
-    gravar_conferencia(conferencia, gerado)
+    gravar_conferencia(conferencia, gerado, diferencas)
 
     print("\n%d liderancas (%d com farol) | meses ate %s | mes padrao %s" % (len(pessoas), lidos, ult, padrao))
     if problemas:

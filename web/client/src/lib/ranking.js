@@ -25,19 +25,22 @@ export function grauMeta(meta, base) {
 export const chaveSim = (pessoa, i, base) => `${pessoa.id}|${i}|${base}`;
 
 /**
- * % da pessoa na base. No simulador, parte do % oficial da planilha e soma peso x (farol novo -
- * farol original) de cada meta alterada. Assim, sem mexer em nada, o simulador mostra o mesmo
- * número das telas Mês e YTD, mesmo nos faróis que consolidam por média simples.
+ * % da pessoa na base. No simulador, quem teve alguma meta alterada é recalculado do zero:
+ * soma de peso x farol de cada meta (peso 20% com farol 90% = 0,18). Meta sem farol conta 0.
+ *
+ * Antes (até 13/10/2026) partia do % oficial e somava só a diferença da meta alterada - na
+ * Elyana, cujo Excel soma 92% com as metas valendo 78%, uma meta para 100% a levava a 100%.
  */
 export function pctPessoa(pessoa, base, sim) {
   const oficial = base === 'ytd' ? pessoa.ytd : pessoa.mes?.[base] ?? null;
-  if (oficial == null || !sim) return oficial;
-  let delta = 0;
+  if (!sim || !pessoa.metas.some((_, i) => chaveSim(pessoa, i, base) in sim)) return oficial;
+  let soma = 0;
   pessoa.metas.forEach((meta, i) => {
+    if (!meta.peso) return;
     const k = chaveSim(pessoa, i, base);
-    if (k in sim && meta.peso) delta += meta.peso * (sim[k] - (grauMeta(meta, base) ?? 0));
+    soma += meta.peso * ((k in sim ? sim[k] : grauMeta(meta, base)) ?? 0);
   });
-  return Math.max(0, oficial + delta);
+  return soma;
 }
 
 export function multiplicador(pos, n, regra) {
